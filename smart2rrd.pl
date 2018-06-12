@@ -9,6 +9,7 @@ use Data::Dumper;
 use Readonly;
 use Cwd;
 use Capture::Tiny ':all';
+use File::Which;
 use utf8;
 
 Readonly::Scalar my $cron_seconds => 30 * 60;
@@ -18,6 +19,8 @@ Readonly::Scalar my $png_dir       => getcwd;
 Readonly::Scalar my $data_colour   => '#0000FF';
 Readonly::Scalar my $worst_colour  => '#FFFF00';
 Readonly::Scalar my $thresh_colour => '#FF0000';
+Readonly::Scalar my $smartctl      => $ENV{'SMARTCTL'} // which('smartctl');
+Readonly::Scalar my $rrdtool       => $ENV{'RRDTOOL'} // which('rrdtool');
 
 Readonly::Hash my %wanted_attrs => (
   5   => 'Reallocated_Sector_Ct',
@@ -57,7 +60,7 @@ sub create_rrd {
       "DS:${id}_raw:GAUGE:${heartbeat}:0:U";
   }
   my @rrd_create = (
-    'rrdtool',           'create',
+    $rrdtool,            'create',
     $rrdfile,            '--step',
     $cron_seconds,       @data_sources,
     'RRA:MAX:0.5:1:336', 'RRA:MAX:0.5:2:744',
@@ -81,7 +84,7 @@ sub save_rrd {
   }
 
   my @rrd_update = (
-    'rrdtool', 'update', $rrdfile, '--template', join( ':', @data_sources ),
+    $rrdtool, 'update', $rrdfile, '--template', join( ':', @data_sources ),
     '--', 'N:' . join( ':', @values )
   );
   system(@rrd_update) == 0
@@ -91,7 +94,7 @@ sub save_rrd {
 sub get_smart {
   my $disk     = shift;
   my $diskvals = [];
-  open( my $fh, '-|', '/usr/sbin/smartctl', '-A', $disk );
+  open( my $fh, '-|', $smartctl, '-A', $disk );
   my $do_split = 0;
   while (<$fh>) {
     chomp;
@@ -131,7 +134,7 @@ sub rrd_graph {
   my $pngfile = png_filename($pngname);
   my $rrdfile = rrd_filename($diskid);
   my @graph   = (
-    'rrdtool',
+    $rrdtool,
     'graph',
     $pngfile,
     '-a',
