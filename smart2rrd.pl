@@ -27,6 +27,7 @@ Readonly::Hash my %wanted_attrs => (
   194 => 'Temperature_Celsius',
   196 => 'Reallocated_Event_Count',
   187 => 'Uncorrectable_Error_Cnt',
+  188 => 'Command_Timeout',
   190 => 'Airflow_Temperature_Cel'
 );
 
