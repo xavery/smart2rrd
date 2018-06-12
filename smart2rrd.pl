@@ -8,6 +8,7 @@ use File::Find;
 use Data::Dumper;
 use Readonly;
 use Cwd;
+use Capture::Tiny ':all';
 use utf8;
 
 Readonly::Scalar my $cron_seconds => 30 * 60;
@@ -122,11 +123,10 @@ sub rrd_graph {
     my $diskid, my $title, my $vlabel, my $period,
     my $data_source,
     my $data_name,
-    my $html,
-    my $args
+    my $html, my $args
   ) = @_;
   my $pngname = "${diskid}_${data_source}_${period}";
-  my $pngfile = png_filename( $pngname );
+  my $pngfile = png_filename($pngname);
   my $rrdfile = rrd_filename($diskid);
   my @graph   = (
     'rrdtool',
@@ -148,7 +148,10 @@ sub rrd_graph {
     'GPRINT:alast:%6.2lf %s',
     @{$args}
   );
-  system(@graph) == 0 or die "rrdtool graph returned with non-zero status";
+  my ( $out, $err, $rv ) = capture {
+    system(@graph);
+  };
+  $rv == 0 or die "rrdtool graph returned with non-zero status\n$out\n$err";
   print $html "<img src=\"${pngname}.png\">\n";
 }
 
@@ -161,7 +164,8 @@ sub generate_value_graph {
   for ( ( '1d', '1w', '1m' ) ) {
     rrd_graph( $diskid, $wanted_attrs{$id}, 'value', $_, $id, 'value', $html,
       [ "HRULE:${worst}${worst_colour}", "HRULE:${thresh}${thresh_colour}" ] );
-    rrd_graph( $diskid, $wanted_attrs{$id}, 'raw', $_, "${id}_raw", 'raw', $html, [] );
+    rrd_graph( $diskid, $wanted_attrs{$id}, 'raw', $_, "${id}_raw", 'raw',
+      $html, [] );
     print $html "<br>\n";
   }
 }
@@ -182,7 +186,7 @@ sub wanted {
 
 find( \&wanted, '/dev/disk/by-id' );
 
-open(my $html, '>', "${png_dir}/index.html");
+open( my $html, '>', "${png_dir}/index.html" );
 my $htmlheader = <<HTML;
 <!DOCTYPE html>
 <html lang="en">
@@ -199,7 +203,7 @@ for my $diskid (@disks) {
   create_rrd( $diskid, $values );
   save_rrd( $diskid, $values );
   print $html "<h1>${diskid}</h1>\n";
-  generate_graphs($diskid, $values, $html);
+  generate_graphs( $diskid, $values, $html );
 }
 print $html "</body>\n</html>\n";
 close($html);
