@@ -186,10 +186,41 @@ sub wanted {
   push @disks, $_;
 }
 
+sub generate_html_attr_table {
+  my ( $values, $html ) = @_;
+  my $table_hdr = <<HTML;
+<table>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Value</th>
+<th>Worst</th>
+<th>Threshold</th>
+<th>Raw value</th>
+</tr>
+HTML
+  print $html $table_hdr;
+  for ( @{$values} ) {
+    my $name     = $wanted_attrs{ $_->{id} };
+    my $attr_row = <<"HTML";
+<tr>
+<td>$_->{id}</td>
+<td>${name}</td>
+<td>$_->{value}</td>
+<td>$_->{worst}</td>
+<td>$_->{thresh}</td>
+<td>$_->{raw_value}</td>
+</tr>
+HTML
+    print $html $attr_row;
+  }
+  print $html "</table><br>\n";
+}
+
 find( \&wanted, '/dev/disk/by-id' );
 
 open( my $html, '>', "${png_dir}/index.html" );
-my $cur_local = localtime;
+my $cur_local  = localtime;
 my $htmlheader = <<"HTML";
 <!DOCTYPE html>
 <html lang="en">
@@ -207,6 +238,7 @@ for my $diskid (@disks) {
   create_rrd( $diskid, $values );
   save_rrd( $diskid, $values );
   print $html "<h1>${diskid}</h1>\n";
+  generate_html_attr_table( $values, $html );
   generate_graphs( $diskid, $values, $html );
 }
 print $html "</body>\n</html>\n";
