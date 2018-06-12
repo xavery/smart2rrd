@@ -188,7 +188,8 @@ sub wanted {
 find( \&wanted, '/dev/disk/by-id' );
 
 open( my $html, '>', "${png_dir}/index.html" );
-my $htmlheader = <<HTML;
+my $cur_local = localtime;
+my $htmlheader = <<"HTML";
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -196,6 +197,7 @@ my $htmlheader = <<HTML;
     <title>SMART + RRDTool</title>
   </head>
   <body>
+  Generated at ${cur_local}
 HTML
 print $html $htmlheader;
 
