@@ -28,6 +28,7 @@ Readonly::Hash my %wanted_attrs => (
   196 => 'Reallocated_Event_Count',
   187 => 'Uncorrectable_Error_Cnt',
   188 => 'Command_Timeout',
+  189 => 'High_Fly_Writes',
   190 => 'Airflow_Temperature_Cel'
 );
 
