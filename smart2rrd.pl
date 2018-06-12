@@ -154,7 +154,7 @@ sub rrd_graph {
     system(@graph);
   };
   $rv == 0 or die "rrdtool graph returned with non-zero status\n$out\n$err";
-  print $html "<img src=\"${pngname}.png\">\n";
+  print $html "<img src=\"${pngname}.png\" alt=\"${pngname}\">\n";
 }
 
 sub generate_value_graph {
