@@ -167,8 +167,15 @@ sub generate_value_graph {
   my $thresh = $value->{thresh};
   print $html "<hr>\n";
   for ( ( '1d', '1w', '1m' ) ) {
-    rrd_graph( $diskid, $wanted_attrs{$id}, 'value', $_, $id, 'value', $html,
-      [ "HRULE:${worst}${worst_colour}", "HRULE:${thresh}${thresh_colour}" ] );
+    rrd_graph(
+      $diskid,
+      $wanted_attrs{$id},
+      'value', $_, $id, 'value', $html,
+      [
+        "HRULE:${worst}${worst_colour}:worst",
+        "HRULE:${thresh}${thresh_colour}:threshold"
+      ]
+    );
     rrd_graph( $diskid, $wanted_attrs{$id}, 'raw', $_, "${id}_raw", 'raw',
       $html, [] );
     print $html "<br>\n";
