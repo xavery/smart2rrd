@@ -243,7 +243,7 @@ my $htmlheader = <<"HTML";
 HTML
 print $html $htmlheader;
 
-for my $diskid (@disks) {
+for my $diskid (sort @disks) {
   my $values = get_smart("/dev/disk/by-id/${diskid}");
   create_rrd( $diskid, $values );
   save_rrd( $diskid, $values );
