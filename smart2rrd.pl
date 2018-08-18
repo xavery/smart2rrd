@@ -11,6 +11,8 @@ use Cwd;
 use Capture::Tiny ':all';
 use File::Which;
 use utf8;
+use File::Temp qw(tempdir);
+use File::Copy;
 
 Readonly::Scalar my $cron_seconds => 30 * 60;
 
@@ -41,6 +43,7 @@ Readonly::Hash my %wanted_attrs => (
 );
 
 my @disks;
+my $tmpd = tempdir( 'smart2rrdXXXXXX', TMPDIR => 1, CLEANUP => 1 );
 
 sub rrd_filename {
   my $diskid = shift;
@@ -49,7 +52,7 @@ sub rrd_filename {
 
 sub png_filename {
   my $diskid = shift;
-  return "${png_dir}/${diskid}.png";
+  return "${tmpd}/${diskid}.png";
 }
 
 sub create_rrd {
@@ -234,7 +237,7 @@ HTML
 
 find( \&wanted, '/dev/disk/by-id' );
 
-open( my $html, '>', "${png_dir}/index.html" );
+open( my $html, '>', "${tmpd}/index.html" );
 my $cur_local  = localtime;
 my $htmlheader = <<"HTML";
 <!DOCTYPE html>
@@ -248,7 +251,7 @@ my $htmlheader = <<"HTML";
 HTML
 print $html $htmlheader;
 
-for my $diskid (sort @disks) {
+for my $diskid ( sort @disks ) {
   my $values = get_smart("/dev/disk/by-id/${diskid}");
   create_rrd( $diskid, $values );
   save_rrd( $diskid, $values );
@@ -258,3 +261,11 @@ for my $diskid (sort @disks) {
 }
 print $html "</body>\n</html>\n";
 close($html);
+
+find(
+  sub {
+    return unless /\.png$/ or $_ eq 'index.html';
+    move( $_, $png_dir );
+  },
+  $tmpd
+);
