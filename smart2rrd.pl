@@ -14,7 +14,8 @@ use utf8;
 use File::Temp qw(tempdir);
 use File::Copy;
 
-Readonly::Scalar my $cron_seconds => 30 * 60;
+Readonly::Scalar my $cron_seconds     => 30 * 60;
+Readonly::Scalar my $smartctl_timeout => 30;
 
 Readonly::Scalar my $rrd_dir       => getcwd;
 Readonly::Scalar my $png_dir       => getcwd;
@@ -102,32 +103,47 @@ sub save_rrd {
 sub get_smart {
   my $disk     = shift;
   my $diskvals = [];
-  open( my $fh, '-|', $smartctl, '-A', $disk );
-  my $do_split = 0;
-  while (<$fh>) {
-    chomp;
-    if (/^ID#/) {
-      $do_split = 1;
-      next;
+  eval {
+    my $pid = open( my $fh, '-|', $smartctl, '-A', $disk );
+    die "cannot start smartctl : $!" unless defined $pid;
+
+    local $SIG{ALRM} = sub {
+      kill('KILL', $pid);
+      die "smartctl call timed out\n";
+    };
+    alarm $smartctl_timeout;
+
+    my $do_split = 0;
+    while (<$fh>) {
+      chomp;
+      if (/^ID#/) {
+        $do_split = 1;
+        next;
+      }
+      next unless $do_split;
+      last if $_ eq "";
+      my (
+        $id,     $attr_name, $flag,    $value,       $worst,
+        $thresh, $type,      $updated, $when_failed, $raw_value
+      ) = split;
+      next if not defined( $wanted_attrs{$id} );
+      push @{$diskvals},
+        {
+        id        => int($id),
+        value     => $value,
+        worst     => $worst,
+        thresh    => $thresh,
+        raw_value => $raw_value
+        };
     }
-    next unless $do_split;
-    last if $_ eq "";
-    my (
-      $id,     $attr_name, $flag,    $value,       $worst,
-      $thresh, $type,      $updated, $when_failed, $raw_value
-    ) = split;
-    next if not defined( $wanted_attrs{$id} );
-    push @{$diskvals},
-      {
-      id        => int($id),
-      value     => $value,
-      worst     => $worst,
-      thresh    => $thresh,
-      raw_value => $raw_value
-      };
+    close($fh);
+    my $status = $?;
+    alarm 0;
+    die "smartctl returned with status ${status}" if $status != 0;
+  };
+  if ($@) {
+    $diskvals = $@;
   }
-  close($fh);
-  die "smartctl returned with non-zero status" if $? != 0;
   return $diskvals;
 }
 
@@ -253,11 +269,15 @@ print $html $htmlheader;
 
 for my $diskid ( sort @disks ) {
   my $values = get_smart("/dev/disk/by-id/${diskid}");
-  create_rrd( $diskid, $values );
-  save_rrd( $diskid, $values );
   print $html "<h1>${diskid}</h1>\n";
-  generate_html_attr_table( $values, $html );
-  generate_graphs( $diskid, $values, $html );
+  if (ref($values) eq 'ARRAY') {
+    create_rrd( $diskid, $values );
+    save_rrd( $diskid, $values );
+    generate_html_attr_table( $values, $html );
+    generate_graphs( $diskid, $values, $html );
+  } else {
+    print $html "Error occurred : $values\n";
+  }
 }
 print $html "</body>\n</html>\n";
 close($html);
