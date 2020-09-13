@@ -36,9 +36,11 @@ Readonly::Hash my %wanted_attrs => (
   188 => 'Command_Timeout',
   189 => 'High_Fly_Writes',
   190 => 'Airflow_Temperature_Cel',
+  173 => 'MaxAvgErase_Ct',
   177 => 'Wear_Leveling_Count',
   181 => 'Program_Fail_Cnt_Total',
   182 => 'Erase_Fail_Count_Total',
+  231 => 'SSD_Life_Left',
   232 => 'Available_Reservd_Space',
   250 => 'Read_Error_Retry_Rate'
 );
